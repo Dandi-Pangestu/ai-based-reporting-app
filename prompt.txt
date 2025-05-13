@@ -1,0 +1,6 @@
+List the top 3 organization id with the highest average messages count from metrics rooms.
+Please generate chart visualization with type bar and also please give me analysis for that result.
+
+
+Find the top 5 rooms from metrics rooms with the highest resolution times.
+Please generate chart visualization with type bar and also please give me analysis for that result.
