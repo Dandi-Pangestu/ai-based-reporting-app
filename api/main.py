@@ -6,10 +6,22 @@ from contextlib import asynccontextmanager
 from mcp_client import MCPClient
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+import os
 
 load_dotenv()
 
-# Example: Add your server configs here
+# Read Postgres credentials from environment variables
+POSTGRES_USER = os.getenv("DATABASE_USERNAME", "postgres")
+POSTGRES_PASSWORD = os.getenv("DATABASE_PASSWORD", "password")
+POSTGRES_HOST = os.getenv("DATABASE_HOST", "localhost")
+POSTGRES_PORT = os.getenv("DATABASE_PORT", "5432")
+POSTGRES_DB = os.getenv("DATABASE_NAME", "hub_test")
+POSTGRES_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+# Define visualization server path
+VISUALIZATION_SERVER_PATH = os.getenv("VISUALIZATION_SERVER_PATH", "/to/path/to/visualization_server.py")
+
+# Define the server configurations
 SERVER_CONFIGS = {
     "visualization_server": {
         "command": "uv",
@@ -19,7 +31,7 @@ SERVER_CONFIGS = {
             "mcp[cli]",
             "mcp",
             "run",
-            "/Users/dandipangestu/Documents/Learn/AI/ai-based-reporting-app/mcp_server/visualization_server.py"
+            VISUALIZATION_SERVER_PATH
         ]
     },
     "postgres": {
@@ -27,7 +39,7 @@ SERVER_CONFIGS = {
         "args": [
           "-y",
           "@modelcontextprotocol/server-postgres",
-          "postgresql://postgres:password@localhost:5432/hub_test"
+          POSTGRES_URL
         ]
       }
     # Add more servers here as needed

@@ -12,3 +12,6 @@ dependencies = [
     "pandas>=2.2.3",
     "python-dotenv>=1.1.0",
 ]
+
+[tool.setuptools]
+packages = ["api", "mcp_server"]

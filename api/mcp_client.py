@@ -2,13 +2,15 @@ from typing import Optional, Dict
 from contextlib import AsyncExitStack
 import traceback
 
-# from utils.logger import logger
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from datetime import datetime
 from utils.logger import logger
 import json
 import os
+import asyncio
+import anyio
+import builtins
 
 from anthropic import Anthropic
 from anthropic.types import Message
@@ -73,22 +75,35 @@ class MCPClient:
             raise
         
     # cleanup
-    async def cleanup(self, name=None):
+    async def cleanup(self):
+        CancelledError = getattr(asyncio, 'CancelledError', Exception)
+        AnyioCancelledError = getattr(anyio, 'get_cancelled_exc_class', lambda: Exception)()
+        ProcessLookupError_ = getattr(builtins, "ProcessLookupError", Exception)
+        ExceptionGroup_ = getattr(builtins, "ExceptionGroup", None)
         try:
-            if name:
-                await self.exit_stacks[name].aclose()
-                del self.sessions[name]
-                del self.exit_stacks[name]
-                self.logger.info(f"Disconnected from MCP server '{name}'")
-            else:
-                for n in list(self.sessions.keys()):
+            for n in list(self.sessions.keys()):
+                try:
                     await self.exit_stacks[n].aclose()
-                    self.logger.info(f"Disconnected from MCP server '{n}'")
-                self.sessions.clear()
-                self.exit_stacks.clear()
+                except (CancelledError, AnyioCancelledError, RuntimeError, ProcessLookupError_) as e:
+                    if "cancel scope" in str(e) or isinstance(e, ProcessLookupError_):
+                        self.logger.warning(f"Suppressed shutdown error during cleanup of '{n}': {e}")
+                    else:
+                        raise
+                except Exception as e:
+                    if ExceptionGroup_ and isinstance(e, ExceptionGroup_):
+                        for sub in e.exceptions:
+                            if isinstance(sub, ProcessLookupError_):
+                                self.logger.warning(f"Suppressed ProcessLookupError in ExceptionGroup during cleanup of '{n}'")
+                            else:
+                                raise
+                    else:
+                        raise
+                self.logger.info(f"Disconnected from MCP server '{n}'")
+            self.sessions.clear()
+            self.exit_stacks.clear()
         except Exception as e:
             self.logger.error(f"Error during cleanup: {e}")
-            traceback.print_exc()
+            import traceback; traceback.print_exc()
             raise
         
     # process query
