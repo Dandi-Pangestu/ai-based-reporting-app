@@ -23,6 +23,8 @@ class MCPClient:
         self.exit_stacks: Dict[str, AsyncExitStack] = {}
         self.llm = Anthropic()
         self.logger = logger
+        self.tool_to_server = {}
+        self.all_tools = []
 
     # connect to multiple MCP servers
     async def connect_to_server(self, configs: dict):
@@ -30,8 +32,6 @@ class MCPClient:
         Connect to multiple MCP servers using a dict of configs: {server_name: config}
         Build a mapping of tool_name -> server_name for all tools and cache all_tools.
         """
-        self.tool_to_server = {}
-        self.all_tools = []
         for name, config in configs.items():
             await self._connect_single_server(name, config)
             tools = await self.get_mcp_tools(name)
@@ -116,12 +116,7 @@ class MCPClient:
         user_message = {"role": "user", "content": query}
         messages = [user_message]
         while True:
-            response = self.llm.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1024,
-                messages=messages,
-                tools=self.all_tools,
-            )
+            response = await self.call_llm(messages)
             if response.content[0].type == "text" and len(response.content) == 1:
                 assistant_message = {
                     "role": "assistant",
@@ -166,14 +161,17 @@ class MCPClient:
         return messages
         
     # call llm
-    async def call_llm(self):
+    async def call_llm(self, messages: list):
+        """
+        Call the LLM with the given messages and return the response.
+        """
         try:
             self.logger.info("Calling LLM")
             return self.llm.messages.create(
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=1024,
-                messages=self.messages,
-                tools=self.tools,
+                messages=messages,
+                tools=self.all_tools,
             )
         except Exception as e:
             self.logger.error(f"Error calling LLM: {e}")
