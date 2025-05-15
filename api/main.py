@@ -7,6 +7,7 @@ from mcp_client import MCPClient
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 import os
+import uvicorn
 
 load_dotenv()
 
@@ -77,14 +78,6 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     query: str
 
-class Message(BaseModel):
-    role: str
-    content: Any
-
-class ToolCall(BaseModel):
-    name: str
-    args: Dict[str, Any]
-
 @app.post("/query")
 async def process_query(request: QueryRequest):
     """Process a query and return the response"""
@@ -111,6 +104,4 @@ async def list_servers():
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
